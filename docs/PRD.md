@@ -26,6 +26,15 @@ An iOS app with an AI agent that:
 5. **Takes changes in chat**: "kal chhutti hai", "Friday 10 baje pahunchna hai", "pause" →
    preview → Apply.
 
+## Why not just open Uber? (differentiation)
+| Without Commute Agent | With Commute Agent |
+|---|---|
+| Remember to book every morning | Proactive "Book now" and "Leave now" reminders |
+| Guess 8:45 or 9:00 | Time computed from route + rush hour + rain + buffer + driver wait, with a "why" |
+| Type pickup/drop every day; area-level guess | Exact pins (gate-level), pre-filled in one tap |
+| Remember holidays / late days | "I'm off tomorrow" → reminders adjust |
+~10 actions every morning → 3 (tap reminder, pick vehicle, confirm). With an authorised booking API: 1.
+
 ## Non-goals (explicit)
 - Automatically booking or paying for rides (no public authorised API for individual developers).
 - Rapido hand-off (no verified public deep link). Rapido users get reminders only.

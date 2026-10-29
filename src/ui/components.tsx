@@ -1,134 +1,264 @@
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SymbolView } from 'expo-symbols';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
+import { Glass } from './Glass';
 import { colors, radius, space, type } from './theme';
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export const tap = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+export const success = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+/** SF Symbol with a safe fallback (Android/web). */
+export function Icon({ name, size = 18, color = colors.ink }: { name: string; size?: number; color?: string }) {
+  return (
+    <SymbolView
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      name={name as any}
+      size={size}
+      tintColor={color}
+      type="hierarchical"
+      fallback={<View style={{ width: size, height: size }} />}
+    />
+  );
 }
 
-export function Label({ children }: { children: React.ReactNode }) {
-  return <Text style={[type.label, { marginBottom: space.sm }]}>{children}</Text>;
+/** Full-screen night backdrop with soft colour glows — gives Glass something to refract. */
+export function Backdrop() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient colors={['#0B1018', '#07090D', '#050608']} style={StyleSheet.absoluteFill} />
+      <View style={[styles.glow, { top: -120, right: -80, backgroundColor: colors.accentGlow }]} />
+      <View style={[styles.glow, { top: 260, left: -140, backgroundColor: 'rgba(122,167,255,0.22)' }]} />
+      <View style={[styles.glow, { bottom: -160, right: -60, backgroundColor: 'rgba(180,155,255,0.20)' }]} />
+      {/* Heavy blur turns the solid circles into soft light glows. */}
+      <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
+    </View>
+  );
+}
+
+export function Card({ children, style, tint }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; tint?: string }) {
+  return (
+    <Glass style={[{ padding: space.lg, marginBottom: space.md }, style]} tint={tint}>
+      {children}
+    </Glass>
+  );
+}
+
+export function SectionLabel({ children, icon }: { children: React.ReactNode; icon?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: space.md }}>
+      {icon ? <Icon name={icon} size={13} color={colors.muted} /> : null}
+      <Text style={type.label}>{children}</Text>
+    </View>
+  );
 }
 
 type ButtonProps = {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: 'primary' | 'glass' | 'ghost' | 'danger';
+  icon?: string;
   disabled?: boolean;
   loading?: boolean;
   accessibilityHint?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ title, onPress, variant = 'primary', disabled, loading, accessibilityHint }: ButtonProps) {
-  const v = buttonVariants[variant];
+export function Button({ title, onPress, variant = 'primary', icon, disabled, loading, accessibilityHint, style }: ButtonProps) {
+  const fg =
+    variant === 'primary' ? colors.accentInk : variant === 'danger' ? colors.danger : variant === 'ghost' ? colors.inkSoft : colors.ink;
+  const content = loading ? (
+    <ActivityIndicator color={fg} />
+  ) : (
+    <View style={styles.row}>
+      {icon ? <Icon name={icon} size={17} color={fg} /> : null}
+      <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
+    </View>
+  );
+  const press = () => {
+    tap();
+    onPress();
+  };
+  const a11y = {
+    accessibilityRole: 'button' as const,
+    accessibilityLabel: title,
+    accessibilityHint,
+    accessibilityState: { disabled: !!(disabled || loading) },
+  };
+
+  if (variant === 'primary') {
+    return (
+      <Pressable {...a11y} onPress={press} disabled={disabled || loading} style={({ pressed }) => [{ opacity: disabled ? 0.45 : pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }, style]}>
+        <LinearGradient colors={['#8BFFD7', colors.accent, '#3FD6A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.button}>
+          {content}
+        </LinearGradient>
+      </Pressable>
+    );
+  }
+  if (variant === 'glass') {
+    return (
+      <Pressable {...a11y} onPress={press} disabled={disabled || loading} style={({ pressed }) => [{ opacity: disabled ? 0.45 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }, style]}>
+        <Glass radius={radius.md} interactive style={styles.button}>
+          {content}
+        </Glass>
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable
+      {...a11y}
+      onPress={press}
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        styles.button,
+        variant === 'danger' && { backgroundColor: colors.dangerSoft },
+        { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 },
+        style,
+      ]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+  tone = 'accent',
+}: {
+  label: string;
+  selected?: boolean;
+  onPress: () => void;
+  icon?: string;
+  tone?: 'accent' | 'violet';
+}) {
+  const on = tone === 'violet' ? colors.violet : colors.accent;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: disabled || loading }}
-      onPress={onPress}
-      disabled={disabled || loading}
-      style={({ pressed }) => [styles.button, v.box, (disabled || loading) && { opacity: 0.5 }, pressed && { opacity: 0.8 }]}
+      accessibilityState={{ selected: !!selected }}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        styles.chip,
+        selected ? { backgroundColor: on, borderColor: on } : null,
+        { opacity: pressed ? 0.75 : 1 },
+      ]}
     >
-      {loading ? <ActivityIndicator color={v.text.color} /> : <Text style={[styles.buttonText, v.text]}>{title}</Text>}
+      {icon ? <Icon name={icon} size={13} color={selected ? colors.accentInk : on} /> : null}
+      <Text style={{ color: selected ? colors.accentInk : colors.ink, fontWeight: '600', fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
 }
 
-const buttonVariants = {
-  primary: { box: { backgroundColor: colors.accent }, text: { color: '#fff' } },
-  secondary: { box: { backgroundColor: colors.accentSoft }, text: { color: colors.accent } },
-  danger: { box: { backgroundColor: colors.dangerSoft }, text: { color: colors.danger } },
-  ghost: { box: { backgroundColor: 'transparent' }, text: { color: colors.muted } },
-};
-
-export function Field(props: TextInputProps & { label: string; error?: string | null }) {
-  const { label, error, style, ...rest } = props;
+export function Field(props: TextInputProps & { label?: string; error?: string | null; icon?: string; right?: React.ReactNode }) {
+  const { label, error, icon, right, style, ...rest } = props;
   return (
     <View style={{ marginBottom: space.md }}>
-      <Text style={[type.small, { marginBottom: space.xs, color: colors.ink, fontWeight: '500' }]}>{label}</Text>
-      <TextInput
-        placeholderTextColor={colors.muted}
-        accessibilityLabel={label}
-        style={[styles.input, error ? { borderColor: colors.danger } : null, style]}
-        {...rest}
-      />
-      {error ? <Text style={[type.small, { color: colors.danger, marginTop: space.xs }]}>{error}</Text> : null}
+      {label ? <Text style={[type.caption, { marginBottom: 6 }]}>{label}</Text> : null}
+      <View style={[styles.field, error ? { borderColor: colors.danger } : null]}>
+        {icon ? <Icon name={icon} size={16} color={colors.muted} /> : null}
+        <TextInput
+          placeholderTextColor={colors.muted}
+          selectionColor={colors.accent}
+          keyboardAppearance="dark"
+          accessibilityLabel={label ?? rest.placeholder}
+          style={[styles.input, style]}
+          {...rest}
+        />
+        {right}
+      </View>
+      {error ? <Text style={[type.caption, { color: colors.danger, marginTop: 6 }]}>{error}</Text> : null}
     </View>
   );
 }
 
-export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      style={[styles.chip, selected && { backgroundColor: colors.ink, borderColor: colors.ink }]}
-    >
-      <Text style={{ color: selected ? '#fff' : colors.ink, fontWeight: '600', fontSize: 13 }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-type Tone = 'info' | 'warn' | 'danger' | 'ok';
-const tones: Record<Tone, { bg: string; fg: string }> = {
-  info: { bg: colors.infoSoft, fg: colors.info },
-  warn: { bg: colors.warnSoft, fg: colors.warn },
-  danger: { bg: colors.dangerSoft, fg: colors.danger },
-  ok: { bg: colors.accentSoft, fg: colors.accent },
+type Tone = 'info' | 'warn' | 'danger' | 'ok' | 'ai';
+const tones: Record<Tone, { bg: string; fg: string; icon: string }> = {
+  info: { bg: colors.skySoft, fg: colors.sky, icon: 'info.circle.fill' },
+  warn: { bg: colors.amberSoft, fg: colors.amber, icon: 'exclamationmark.triangle.fill' },
+  danger: { bg: colors.dangerSoft, fg: colors.danger, icon: 'xmark.octagon.fill' },
+  ok: { bg: colors.accentSoft, fg: colors.accent, icon: 'checkmark.circle.fill' },
+  ai: { bg: colors.violetSoft, fg: colors.violet, icon: 'sparkles' },
 };
 
-export function Notice({ tone = 'info', title, children }: { tone?: Tone; title?: string; children: React.ReactNode }) {
+export function Notice({ tone = 'info', title, children }: { tone?: Tone; title?: string; children?: React.ReactNode }) {
   const t = tones[tone];
   return (
     <View style={[styles.notice, { backgroundColor: t.bg }]} accessibilityRole="alert">
-      {title ? <Text style={{ color: t.fg, fontWeight: '700', marginBottom: 2 }}>{title}</Text> : null}
-      <Text style={{ color: t.fg, fontSize: 13, lineHeight: 18 }}>{children}</Text>
+      <Icon name={t.icon} size={16} color={t.fg} />
+      <View style={{ flex: 1 }}>
+        {title ? <Text style={{ color: colors.ink, fontWeight: '700', fontSize: 14.5, marginBottom: children ? 2 : 0 }}>{title}</Text> : null}
+        {children ? <Text style={{ color: colors.inkSoft, fontSize: 13.5, lineHeight: 19 }}>{children}</Text> : null}
+      </View>
     </View>
   );
 }
 
-export function Badge({ text, tone = 'info' }: { text: string; tone?: Tone }) {
+export function Pill({ text, tone = 'info', icon }: { text: string; tone?: Tone; icon?: string }) {
   const t = tones[tone];
   return (
-    <View style={{ backgroundColor: t.bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3, alignSelf: 'flex-start' }}>
+    <View style={[styles.pill, { backgroundColor: t.bg }]}>
+      {icon ? <Icon name={icon} size={11} color={t.fg} /> : null}
       <Text style={{ color: t.fg, fontSize: 12, fontWeight: '700' }}>{text}</Text>
     </View>
   );
 }
 
+/** Small rounded icon square used in list rows. */
+export function IconTile({ name, color = colors.accent, bg = colors.accentSoft }: { name: string; color?: string; bg?: string }) {
+  return (
+    <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={name} size={17} color={color} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: space.lg,
-    marginBottom: space.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-  },
-  button: { borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: space.lg, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
-  buttonText: { fontSize: 16, fontWeight: '600' },
-  input: {
-    backgroundColor: '#FAF9F7',
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.ink,
-  },
+  glow: { position: 'absolute', width: 360, height: 360, borderRadius: 360, opacity: 0.6 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  button: { borderRadius: radius.md, minHeight: 54, paddingHorizontal: space.lg, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { fontSize: 16.5, fontWeight: '700', letterSpacing: -0.2 },
   chip: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: space.sm,
-    marginBottom: space.sm,
-    minWidth: 44,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 40,
   },
-  notice: { borderRadius: radius.md, padding: space.md, marginBottom: space.md },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.fieldBg,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.sm,
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  input: { flex: 1, fontSize: 16.5, color: colors.ink, paddingVertical: 14 },
+  notice: { flexDirection: 'row', gap: 10, borderRadius: radius.sm, padding: space.md, marginBottom: space.md, alignItems: 'flex-start' },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
 });

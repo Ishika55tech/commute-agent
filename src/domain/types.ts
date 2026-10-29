@@ -34,9 +34,20 @@ export interface CommutePlan {
   skipDates: string[];
   /** One-off arrival-time overrides, keyed by "YYYY-MM-DD". */
   arrivalOverrides: Record<string, string>;
+  /** Optional evening ride back (dropoff → pickup) on the same working days. */
+  returnTrip?: ReturnTrip | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ReturnTrip {
+  enabled: boolean;
+  /** When the user wants to leave the destination, 24h "HH:MM". */
+  departTime: string;
+}
+
+/** 'to' = morning (pickup → dropoff), 'back' = evening return (dropoff → pickup). */
+export type Leg = 'to' | 'back';
 
 export type EstimateSource = 'openrouteservice' | 'fallback';
 
@@ -56,6 +67,8 @@ export interface Adjustment {
 export interface DayPlan {
   /** "YYYY-MM-DD" */
   date: string;
+  /** Defaults to 'to' for the morning commute. */
+  leg?: Leg;
   arriveBy: Date;
   leaveBy: Date;
   /** When the reminder fires and the user should open the ride app. */

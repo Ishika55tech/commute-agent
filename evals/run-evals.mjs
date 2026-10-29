@@ -68,6 +68,7 @@ for (const [i, c] of suite.cases.entries()) {
   } else {
     if (!valid) failures.push('output failed structural validation');
     for (const [k, v] of Object.entries(e)) {
+      if (k === 'clarifyingQuestionPresent') { if (!intent?.clarifyingQuestion) failures.push('expected a clarifying question (broad area)'); continue; }
       if (k === 'missingIncludes') { if (!(intent?.missing ?? []).includes(v)) failures.push(`missing should include ${v}`); continue; }
       if (k === 'summaryNotMatch') { if (new RegExp(v, 'i').test(intent?.summary ?? '')) failures.push(`summary must not mention "${v}"`); continue; }
       const actual = k === 'skipDates' || k === 'arrivalOverride' || k === 'intent' ? intent?.[k] : get(intent, k);

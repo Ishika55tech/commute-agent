@@ -31,6 +31,7 @@ export async function parseCommand(text: string, current: CommutePlan | null, no
         workingDays: current.workingDays,
         bufferMinutes: current.bufferMinutes,
         provider: current.provider,
+        returnDepartTime: current.returnTrip?.enabled ? current.returnTrip.departTime : null,
         paused: current.paused,
         pickupLabel: current.pickup.label,
         dropoffLabel: current.dropoff.label,

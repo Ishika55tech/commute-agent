@@ -89,3 +89,22 @@ describe('applyIntent', () => {
     expect(applyIntent(plan, r.intent, 'now').arrivalOverrides).toEqual({ '2026-10-29': '10:00' });
   });
 });
+
+describe('return trip via the agent', () => {
+  it('turns "I leave the office at 6:30 pm" into an enabled ride home', () => {
+    const r = validateAgentOutput({ intent: 'update', changes: { returnDepartTime: '18:30' }, summary: 's' }, TODAY);
+    if (!r.ok) throw new Error('expected ok');
+    expect(applyIntent(plan, r.intent, 'now').returnTrip).toEqual({ enabled: true, departTime: '18:30' });
+  });
+
+  it('can switch the ride home off and keeps the old time', () => {
+    const withReturn = { ...plan, returnTrip: { enabled: true, departTime: '19:00' } };
+    const r = validateAgentOutput({ intent: 'update', changes: { returnEnabled: false }, summary: 's' }, TODAY);
+    if (!r.ok) throw new Error('expected ok');
+    expect(applyIntent(withReturn, r.intent, 'now').returnTrip).toEqual({ enabled: false, departTime: '19:00' });
+  });
+
+  it('rejects an invalid return time', () => {
+    expect(validateAgentOutput({ intent: 'update', changes: { returnDepartTime: '6:30pm' }, summary: 's' }, TODAY).ok).toBe(false);
+  });
+});

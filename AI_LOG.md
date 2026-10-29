@@ -107,3 +107,52 @@ Gemini (free tier) is the runtime LLM inside the product.
 - **Bug found on device:** "Open Uber" → Safari "address is invalid". Literal `[ ]` in the query (chosen to
   match Uber's docs) are rejected by iOS's RFC 3986 parser. Fix: percent-encode keys; new test checks no raw
   brackets and that the URL decodes to the documented keys. D-009 revised. Uber tests: 8/8.
+
+## 2026-10-29 — SDK 58 upgrade (per-project Node)
+- Owner's iPhone had Expo Go for SDK 58 → upgraded. SDK 58 needs Node ≥ 22.13; owner required that other projects
+  keep Node 20 → `nvm install 24` + `.nvmrc` in this repo only; `nvm alias default` left at v20.19.4.
+- `expo install --fix` hit a peer-dep conflict (jest-expo 58 needs `@react-native/jest-preset`) → installed it.
+  `expo-doctor` 20/20.
+
+## 2026-10-29 — Owner feedback on the first device run → redesign (done by AI while the owner was away)
+Owner asked four questions; each became a change:
+1. *"Vijay Nagar is a big area — how do we know the exact pickup?"* → map pin confirmation (search, GPS, drag/tap),
+   prompt v1.2.0 asks for a building/landmark when only an area is given (D-013).
+2. *"How is this different if I still pick the vehicle in Uber?"* → honest positioning table in PRD (D-016).
+3. *"The UI/theme isn't good; make it rich, latest Apple look"* → dark map-first redesign with iOS 26 Liquid Glass,
+   SF Symbols, haptics, 4-step onboarding, countdown hero, visual timeline, agent chips, week strip, app icon (D-012).
+4. *"How do you remind me at 9?"* → two reminders per day + live "test reminder" (D-015).
+- Library choice was verified, not guessed: AI cloned Expo's `sdk-58` branch and react-native-maps v1.29.11, read the
+  versioned docs (`inExpoGo`) and type definitions, and type-checked the new UI against those real types on the
+  owner's Mac (0 errors in app code). MapLibre rejected because it is not in Expo Go (D-011).
+- English-only agent (owner decision, D-014); 4 English eval cases added (19 total).
+- Domain logic unchanged → 33/33 unit tests still pass.
+- Not yet verified on device (owner away): visual result, glass fallback, map gestures inside the scroll view.
+
+## 2026-10-29 — Device feedback: building names not found
+- Owner: "Apollo Premier" (office building) not accepted in the destination search.
+- Root cause (AI): `Location.geocodeAsync` = Apple postal geocoder; no POI search in Expo Go.
+- Fix: debounced autocomplete (350 ms, ≥3 chars) from Photon + ORS (`place-search` Edge Function), merged,
+  de-duplicated within 150 m, biased to the pickup/user location, distance shown; first result auto-selected on
+  submit with the rest offered as alternatives; "tap the map" fallback. D-017. Typecheck: 0 errors.
+- AI also caught its own bug before shipping: passing `near` as a new object each render would have looped the
+  bias effect → effect now depends on latitude/longitude numbers.
+
+## 2026-10-29 — Owner: "Is the UI too complex?" → dashboard simplified + Share ETA
+- AI's own review: dashboard had 9 sections with duplicates (week strip + upcoming list, route card + map chip,
+  long hand-off list, 3 footer buttons).
+- Now 4 blocks: map hero → next ride → agent → week. Week strip is tappable (shows that day's book/leave/arrive,
+  or "skipped" with one-tap **Undo**). Edit / Pause / Delete moved to a native action sheet (⋯). Hand-offs reduced
+  to one "Last: Opened Uber · Thu 08:56" line. Reminder count became a pill.
+- New: **Share ETA** (iOS share sheet, text only — no location shared): "On my way to Office — leaving at 09:04,
+  reaching by 09:30."
+- Typecheck: 0 errors.
+
+## 2026-10-29 (evening) — Ride home + proactive agent
+- Owner chose both from a ranked list (AI recommended only the proactive agent due to the deadline; owner overruled).
+- AI wrote the domain logic test-first: `planReturnForDate`, `upcomingLegs`, `buildInsights` + 15 new tests
+  (return maths, interleaving, skip both legs, rain on next leg only, 6 insight rules, max-2 cap, paused = silent,
+  agent schema for `returnDepartTime` / `returnEnabled`). Unit tests: **48/48**. Typecheck on the Mac: 0 errors.
+- Wired through: agent schema + prompt v1.3.0 (+2 eval cases → 21), notifications per leg, reversed Uber link for
+  the evening, onboarding toggle + time, dashboard insight cards with actions, week detail showing both legs.
+- Design call recorded as D-019: insights are rules, not LLM calls — explainable, testable, no quota.

@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import type { CommutePlan, HandoffRecord } from '../domain/types';
+import type { CommutePlan, HandoffRecord, Leg } from '../domain/types';
 import { getProvider } from '../providers';
 
 /**
@@ -7,7 +7,8 @@ import { getProvider } from '../providers';
  * "opened" or "failed" — we have no way to know whether a ride was booked,
  * so we never claim it was.
  */
-export async function openRideApp(plan: CommutePlan): Promise<HandoffRecord> {
+/** `leg = 'back'` swaps pickup and drop-off for the ride home. */
+export async function openRideApp(plan: CommutePlan, leg: Leg = 'to'): Promise<HandoffRecord> {
   const provider = getProvider(plan.provider);
   const at = new Date().toISOString();
   if (provider.integration === 'unsupported') {
@@ -15,7 +16,7 @@ export async function openRideApp(plan: CommutePlan): Promise<HandoffRecord> {
   }
   let url: string | null;
   try {
-    url = provider.buildHandoffUrl(plan.pickup, plan.dropoff);
+    url = leg === 'back' ? provider.buildHandoffUrl(plan.dropoff, plan.pickup) : provider.buildHandoffUrl(plan.pickup, plan.dropoff);
   } catch (e) {
     return { at, provider: provider.id, status: 'failed', detail: (e as Error).message };
   }

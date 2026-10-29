@@ -3,9 +3,10 @@
 | Level | What | How | Status |
 |---|---|---|---|
 | Unit | `src/domain/scheduler.ts` — time maths, weekday mapping, skips, overrides, pause, midnight, rain-only-first-day | Jest, fixed dates | 15 tests ✅ |
-| Unit | `src/domain/schema.ts` — LLM output validation and `applyIntent` | Jest | 10 tests ✅ |
+| Unit | `src/domain/schema.ts` — LLM output validation and `applyIntent` | Jest | 13 tests ✅ |
+| Unit | `src/domain/scheduler.ts` (return trip) + `src/domain/insights.ts` — return maths, leg ordering, skips, rain on next leg, 6 proactive rules | Jest | 12 tests ✅ |
 | Unit | `src/providers` — Uber link format/encoding/validation, Rapido never builds a URL | Jest | 8 tests ✅ |
-| LLM eval | `parse-commute` behaviour: English, Hinglish, relative dates, one-day vs permanent, missing info, off-topic, prompt injection | `npm run eval` against the deployed function | **15/15 pass** (2026-10-29, prompt v1.1.0) |
+| LLM eval | `parse-commute` behaviour: English, Hinglish, relative dates, one-day vs permanent, missing info, off-topic, prompt injection | `npm run eval` against the deployed function | 19 cases (15/15 passed on v1.1.0; 4 English quick-chip/broad-area cases added for v1.2.0) |
 | Guardrail audit | 8 hard rules from `CLAUDE.md` | `guardrail-auditor` agent | per commit |
 | Manual (device) | Setup, reminders firing, notification tap → Uber pre-filled, permission denied, offline | Physical iPhone + Expo Go | checklist below |
 
@@ -16,7 +17,10 @@ node --env-file=.env evals/run-evals.mjs   # LLM evals (needs deployed function)
 ```
 
 ## Device checklist (fill in during testing)
-- [ ] Fresh install → setup by sentence → fields pre-filled → Save → dashboard
+- [ ] Fresh install → tell the agent → pickup pin auto-placed → drag pin to gate → drop-off pin → schedule → Start
+- [ ] "Use my current location" sets pickup to GPS point
+- [ ] "Send me a test reminder" → notification in ~8 s → tap → Uber opens pre-filled
+- [ ] Liquid Glass on iOS 26 device; blur fallback looks consistent on older iOS
 - [ ] Location permission denied → clear message, nothing saved
 - [ ] Notification permission denied → warning banner on dashboard
 - [ ] Reminder fires at bookAt (set arrival ~40 min ahead to test)
@@ -38,3 +42,4 @@ node --env-file=.env evals/run-evals.mjs   # LLM evals (needs deployed function)
 | 2026-10-28 | LLM eval (no pacing) | 5/15 | 9× HTTP 429, 1× 503 — rate limits, not wrong answers (from `agent_runs`) |
 | 2026-10-28 | LLM eval (paced + retry) | 10/15 | Remaining 5 = daily free quota exhausted |
 | 2026-10-29 | LLM eval (model fallback, prompt v1.1.0) | **15/15** | 1 transient retry |
+| 2026-10-29 | Jest unit | 48/48 | + return trip & proactive insights |

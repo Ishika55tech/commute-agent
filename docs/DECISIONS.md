@@ -51,3 +51,58 @@ Each entry: context → decision → consequences. AI proposed options; the owne
 - Decision: percent-encode keys too (`pickup%5Blatitude%5D`); servers decode this to the documented form.
   New test asserts no raw brackets AND that `URLSearchParams` decodes back to the documented keys.
 - Lesson: unit tests proved the URL matched the docs, not that the OS would open it — device testing caught it.
+
+### D-011 Maps: react-native-maps (Apple Maps), not MapLibre
+- Requirement: free map, no billing, exact pickup pin.
+- Checked against Expo SDK 58 docs: `@maplibre/maplibre-react-native` and `expo-maps` are **not in Expo Go**
+  (need a development build); `react-native-maps` is (`inExpoGo: true`) and uses **Apple Maps on iOS — no API key,
+  no billing**. Decision: react-native-maps. MapLibre stays an option once we ship a dev build.
+
+### D-012 Liquid Glass UI with graceful fallback
+- iOS 26 "Liquid Glass" via `expo-glass-effect` (`GlassView`, in Expo Go). Guarded with
+  `isLiquidGlassAvailable() && isGlassEffectAPIAvailable()` (some iOS 26 betas crash — expo/expo#40911).
+  Fallback: `expo-blur` material + hairline border. Dark "night transit" theme, SF Symbols (`expo-symbols`), haptics.
+
+### D-013 Precise pickup = pin, not text
+- Problem (owner): "Vijay Nagar" is a whole neighbourhood — the geocoder returns its centre, not your gate.
+- Decision: every place is confirmed on a map. Search → pin → drag/tap to the exact gate, or "Use my current
+  location" (GPS). The exact lat/long is what goes to Uber. The agent asks for a building/landmark when the user
+  only names an area (prompt v1.2.0).
+
+### D-014 English-only agent
+- Owner decision: the app and agent UI are English. The prompt still tolerates common Hindi words ("kal") but
+  always replies in English.
+
+### D-015 Two reminders + a demo test reminder
+- "Book now" at bookAt (tap → Uber pre-filled) and "Leave now" at leaveBy; 14 days × 2 = 28 (< iOS limit 64).
+- "Send me a test reminder" schedules the real reminder in 8 s so the flow can be shown live without waiting for 9 am.
+
+### D-016 Positioning vs. "just open Uber"
+- Uber books the ride; Commute Agent plans the commute: when to book (route + rush hour + rain + buffer + driver
+  wait), proactive reminders, exact pre-filled pins, and plain-English exceptions ("I'm off tomorrow").
+- Honest limit: the user still picks the vehicle and confirms in Uber (no public booking API). With an authorised
+  provider API, `RideProvider.requestRide()` makes it one tap without touching planning or UI.
+
+### D-017 Building / POI search via OpenStreetMap gazetteers
+- Problem (owner, on device): searching "Apollo Premier" (her office building) found nothing. Apple's geocoder in
+  expo-location only resolves postal-style addresses, not building/company names; Apple's POI search (MKLocalSearch)
+  is not exposed in Expo Go.
+- Decision: type-ahead suggestions from two free OSM-based sources, merged and de-duplicated, biased to the user's
+  location (pickup) or to the pickup (office): Photon (no key, called from the app) and OpenRouteService
+  autocomplete via a new `place-search` Edge Function (ORS key stays server-side). Apple geocoder remains the fallback.
+- Honest limit: if a building is missing from OpenStreetMap, the user taps the map to drop the pin.
+
+### D-018 Ride home (return trip)
+- Owner asked for it; judges will ask "why only mornings?".
+- Model: optional `returnTrip { enabled, departTime }`. The user picks when to LEAVE the office, so the maths runs
+  forward: `bookAt = leave − driverWait`, `arrive ≈ leave + travel` (rush hour judged at leave time, no buffer).
+  `upcomingLegs()` interleaves morning/evening legs by time; skips/pause apply to both; rain only to the next leg.
+- Uber hand-off for the evening leg swaps pickup/drop-off. Reminders: up to 56 pending (iOS limit 64).
+- Agent can set it: "I leave the office at 6:30 pm" → `returnDepartTime: "18:30"` (schema + prompt v1.3.0 + evals).
+
+### D-019 Proactive agent = deterministic rules, not an LLM
+- Goal: the agent speaks first ("Rain likely — I moved your booking 10 min earlier", "Book in 6 min", "Tomorrow is
+  off", "Add a ride home?") with one-tap actions.
+- Decision: pure rules in `src/domain/insights.ts` over data we already compute (plan, legs, weather, estimate
+  source). No extra LLM calls (free-tier quota, latency) and every message is explainable and unit-tested.
+  Max 2 insights at a time to avoid noise.

@@ -1,7 +1,7 @@
 // Deterministic scheduling. NO LLM here — every number the user sees is
 // computed by these pure functions and covered by unit tests.
 
-import type { Adjustment, CommutePlan, DayPlan, IsoWeekday, TravelEstimate } from './types';
+import type { Adjustment, CommutePlan, DayPlan, IsoWeekday, Leg, TravelEstimate } from './types';
 
 export const FALLBACK_TRAVEL_MINUTES = 30;
 export const RUSH_HOUR_FACTOR = 1.3;
@@ -81,17 +81,13 @@ export function arrivalTimeFor(plan: CommutePlan, date: Date): string {
  *   leaveBy = arriveBy - travel - buffer
  *   bookAt  = leaveBy - driverWait
  */
-export function planForDate(plan: CommutePlan, date: Date, inputs: PlanInputs): DayPlan {
-  const arrival = arrivalTimeFor(plan, date);
-  const { hours, minutes } = parseTime(arrival);
-  const arriveBy = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, 0, 0);
-
+/** Travel time for a trip around `hhmm` (rush hour is judged at that time). */
+function computeTravel(hhmm: string, inputs: PlanInputs) {
   const adjustments: Adjustment[] = [];
   const source = inputs.estimate?.source ?? 'fallback';
   const base = inputs.estimate ? Math.max(1, Math.round(inputs.estimate.baseMinutes)) : FALLBACK_TRAVEL_MINUTES;
   let travel = base;
-
-  if (isRushHour(arrival)) {
+  if (isRushHour(hhmm)) {
     const extra = Math.round(base * RUSH_HOUR_FACTOR) - base;
     if (extra > 0) {
       adjustments.push({ reason: `Rush hour (x${RUSH_HOUR_FACTOR})`, minutes: extra });
@@ -102,19 +98,77 @@ export function planForDate(plan: CommutePlan, date: Date, inputs: PlanInputs): 
     adjustments.push({ reason: `Rain likely (${Math.round(inputs.rainProbability)}%)`, minutes: RAIN_EXTRA_MINUTES });
     travel += RAIN_EXTRA_MINUTES;
   }
+  return { travel, adjustments, source };
+}
 
+/**
+ * Compute the morning plan for one date.
+ *   travel  = base estimate (or fallback) [x rush-hour factor] [+ rain]
+ *   leaveBy = arriveBy - travel - buffer
+ *   bookAt  = leaveBy - driverWait
+ */
+export function planForDate(plan: CommutePlan, date: Date, inputs: PlanInputs): DayPlan {
+  const arrival = arrivalTimeFor(plan, date);
+  const { hours, minutes } = parseTime(arrival);
+  const arriveBy = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, 0, 0);
+  const { travel, adjustments, source } = computeTravel(arrival, inputs);
   const leaveBy = addMinutes(arriveBy, -(travel + plan.bufferMinutes));
   const bookAt = addMinutes(leaveBy, -plan.driverWaitMinutes);
+  return { date: toDateKey(date), leg: 'to', arriveBy, leaveBy, bookAt, travelMinutes: travel, adjustments, estimateSource: source };
+}
 
+/**
+ * Evening ride back (destination → pickup). The user picks when to LEAVE, so:
+ *   leaveBy  = departTime
+ *   bookAt   = leaveBy - driverWait
+ *   arriveBy = leaveBy + travel   (no safety buffer: nothing to be late for)
+ * Returns null when the return trip is off.
+ */
+export function planReturnForDate(plan: CommutePlan, date: Date, inputs: PlanInputs): DayPlan | null {
+  const rt = plan.returnTrip;
+  if (!rt?.enabled || !isValidTime(rt.departTime)) return null;
+  const { hours, minutes } = parseTime(rt.departTime);
+  const leaveBy = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, 0, 0);
+  const { travel, adjustments, source } = computeTravel(rt.departTime, inputs);
   return {
     date: toDateKey(date),
-    arriveBy,
+    leg: 'back',
     leaveBy,
-    bookAt,
+    bookAt: addMinutes(leaveBy, -plan.driverWaitMinutes),
+    arriveBy: addMinutes(leaveBy, travel),
     travelMinutes: travel,
     adjustments,
     estimateSource: source,
   };
+}
+
+/**
+ * All upcoming legs (morning + optional evening) whose bookAt is in the future,
+ * in time order. Rain applies only to the very next leg (forecasts are short-range).
+ */
+export function upcomingLegs(plan: CommutePlan, now: Date, inputs: PlanInputs, count: number, horizonDays = 60): DayPlan[] {
+  const dry = { ...inputs, rainProbability: null };
+  const out: DayPlan[] = [];
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (let i = 0; i <= horizonDays && out.length < count + 2; i++) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    if (!isCommuteDay(plan, day)) continue;
+    for (const p of [planForDate(plan, day, dry), planReturnForDate(plan, day, dry)]) {
+      if (p && p.bookAt.getTime() > now.getTime()) out.push(p);
+    }
+  }
+  out.sort((a, b) => a.bookAt.getTime() - b.bookAt.getTime());
+  const result = out.slice(0, count);
+  if (result.length && inputs.rainProbability != null) {
+    const first = result[0];
+    const day = fromDateKey(first.date);
+    result[0] = (first.leg === 'back' ? planReturnForDate(plan, day, inputs) : planForDate(plan, day, inputs)) ?? first;
+  }
+  return result;
+}
+
+export function legOf(day: DayPlan): Leg {
+  return day.leg ?? 'to';
 }
 
 /**
@@ -146,6 +200,16 @@ export function upcomingPlans(
 /** Plain-language explanation of how a DayPlan was derived. */
 export function explainPlan(plan: CommutePlan, day: DayPlan): string {
   const parts: string[] = [];
+  if (legOf(day) === 'back') {
+    const base = day.travelMinutes - day.adjustments.reduce((s, a) => s + a.minutes, 0);
+    parts.push(day.estimateSource === 'openrouteservice' ? `Route estimate is ${base} min (no live traffic).` : `No route estimate, so a default of ${base} min is used.`);
+    for (const a of day.adjustments) parts.push(`${a.reason}: +${a.minutes} min.`);
+    parts.push(
+      `You leave ${plan.dropoff.label} at ${formatTime(day.leaveBy)} and should reach ${plan.pickup.label} around ${formatTime(day.arriveBy)}. ` +
+        `Open the ride app at ${formatTime(day.bookAt)} so a driver is there when you walk out.`,
+    );
+    return parts.join(' ');
+  }
   const baseMinutes = day.travelMinutes - day.adjustments.reduce((s, a) => s + a.minutes, 0);
   parts.push(
     day.estimateSource === 'openrouteservice'

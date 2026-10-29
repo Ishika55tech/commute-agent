@@ -39,7 +39,8 @@ flowchart LR
 
 | Layer | Files | Responsibility |
 |---|---|---|
-| Screens | `src/screens/PlanEditorScreen.tsx`, `DashboardScreen.tsx`, `App.tsx` | Onboarding/edit form with "Fill with AI"; dashboard with plan, explanation, agent chat, upcoming, history; notification-tap handler |
+| Screens | `src/screens/OnboardingScreen.tsx`, `DashboardScreen.tsx`, `App.tsx` | 4-step onboarding (tell the agent → pickup pin → drop-off pin → schedule); dashboard with map hero, countdown, timeline, agent chips, week strip, test reminder; notification-tap handler |
+| Components | `src/components/*` | `PlacePicker` (search / GPS / draggable pin), `RouteMap`, `TimelineBar`, `TimeStepper`, `Segmented` |
 | Domain (pure) | `src/domain/scheduler.ts` | Leave/book time maths, rush-hour & rain adjustments, working-day / skip / override logic, weekday mapping, plain-language explanation |
 | Domain (pure) | `src/domain/schema.ts` | Zod schema for LLM output (`.strict()`), business-rule validation, `applyIntent` reducer |
 | Providers | `src/providers/*` | `RideProvider` interface. Uber = `prefill_handoff` using documented link. Rapido = `unsupported` |
@@ -55,7 +56,8 @@ flowchart LR
 2. `agentApi.parseCommand` → Edge Fn `parse-commute` (text, today, weekday, current labels/times — no coordinates).
 3. Gemini returns JSON → Edge Fn logs it → app re-validates with `validateAgentOutput`.
 4. Valid → fields are pre-filled; invalid → error shown, nothing changes.
-5. User reviews and taps **Save** → `expo-location.geocodeAsync` (Apple, no key) → plan saved locally.
+5. Pickup and drop-off are each confirmed on a map: the agent's address is geocoded (Apple, no key), the user
+   drags the pin to the exact gate (or uses GPS). Only then **Start my commute** saves the plan locally.
 
 **B. Daily planning**
 1. Dashboard fetches route minutes (`travel-estimate`) and rain probability (Open-Meteo) for the next commute.
@@ -63,7 +65,8 @@ flowchart LR
    `travel = base × 1.3 (rush hour 8–11, 17–21) + 10 if rain ≥ 60%`;
    `leaveBy = arrive − travel − buffer`; `bookAt = leaveBy − driverWait`.
    No estimate → 30 min default, clearly labelled.
-3. `syncReminders()` cancels and re-creates one-off DATE notifications for those 14 days.
+3. `syncReminders()` cancels and re-creates one-off DATE notifications for those 14 days — a "Book now" at bookAt and
+   a "Leave now" at leaveBy (28 total, iOS limit 64).
 
 **C. Hand-off**
 Reminder tap or button → `buildUberLink()` →
@@ -79,7 +82,9 @@ Reminder tap or button → `buildUberLink()` →
 
 | Concern | Choice | Why |
 |---|---|---|
-| App | Expo SDK 57, React Native, TypeScript strict | Runs in Expo Go on a real iPhone — no paid Apple account or Xcode build needed |
+| App | Expo SDK 58, React Native 0.88, TypeScript strict | Runs in Expo Go on a real iPhone — no paid Apple account or native build |
+| UI | Liquid Glass (`expo-glass-effect`, fallback `expo-blur`), SF Symbols, gradients, haptics | Native iOS 26 look; all modules ship in Expo Go |
+| Maps | `react-native-maps` → Apple Maps | Free, no API key, in Expo Go (MapLibre/expo-maps need a dev build — D-011) |
 | State/storage | React state + AsyncStorage | Single user, single device; privacy by default |
 | Validation | Zod | Same schema guards LLM output and is unit-tested |
 | LLM | Gemini (free tier), JSON mode, temp 0 | Free, no card; JSON mode reduces malformed output |

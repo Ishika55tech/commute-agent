@@ -1,27 +1,44 @@
+// "Night Transit" theme — dark, map-first, Liquid Glass surfaces with one
+// luminous mint accent (route / go) and amber for warnings (rain, unsupported).
+
 export const colors = {
-  bg: '#F4F2EE',
-  card: '#FFFFFF',
-  ink: '#16181D',
-  muted: '#6B6F78',
-  line: '#E4E1DA',
-  accent: '#0F6E62',
-  accentSoft: '#DDEFEA',
-  warn: '#A15C00',
-  warnSoft: '#FCEFD9',
-  danger: '#B42318',
-  dangerSoft: '#FDE7E5',
-  info: '#2F4FB3',
-  infoSoft: '#E5EBFB',
+  bg: '#07090D',
+  bgElevated: '#0E1219',
+  ink: '#F5F7FA',
+  inkSoft: 'rgba(245,247,250,0.72)',
+  muted: 'rgba(245,247,250,0.48)',
+  faint: 'rgba(245,247,250,0.14)',
+  hairline: 'rgba(255,255,255,0.12)',
+  fieldBg: 'rgba(255,255,255,0.06)',
+
+  accent: '#6BF2C5', // mint — "go", route, primary actions
+  accentInk: '#04140E', // text on accent
+  accentSoft: 'rgba(107,242,197,0.16)',
+  accentGlow: 'rgba(107,242,197,0.35)',
+
+  sky: '#7AA7FF', // travel time
+  skySoft: 'rgba(122,167,255,0.18)',
+  violet: '#B49BFF', // agent / AI
+  violetSoft: 'rgba(180,155,255,0.18)',
+  amber: '#FFC15E', // warnings, rain, buffer
+  amberSoft: 'rgba(255,193,94,0.16)',
+  danger: '#FF7A7A',
+  dangerSoft: 'rgba(255,122,122,0.16)',
 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-export const radius = { sm: 8, md: 14, lg: 20, pill: 999 };
+export const radius = { sm: 12, md: 18, lg: 26, xl: 34, pill: 999 };
+
+const tabular = { fontVariant: ['tabular-nums' as const] };
 
 export const type = {
-  hero: { fontSize: 44, fontWeight: '700' as const, letterSpacing: -1, color: colors.ink },
-  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.4, color: colors.ink },
-  h2: { fontSize: 17, fontWeight: '600' as const, color: colors.ink },
-  body: { fontSize: 15, color: colors.ink, lineHeight: 21 },
-  small: { fontSize: 13, color: colors.muted, lineHeight: 18 },
-  label: { fontSize: 12, fontWeight: '600' as const, color: colors.muted, letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  display: { fontSize: 64, fontWeight: '800' as const, letterSpacing: -2.5, color: colors.ink, ...tabular },
+  hero: { fontSize: 34, fontWeight: '800' as const, letterSpacing: -1, color: colors.ink },
+  h1: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.6, color: colors.ink },
+  h2: { fontSize: 19, fontWeight: '700' as const, letterSpacing: -0.3, color: colors.ink },
+  stat: { fontSize: 22, fontWeight: '700' as const, color: colors.ink, ...tabular },
+  body: { fontSize: 16, color: colors.ink, lineHeight: 22 },
+  small: { fontSize: 13.5, color: colors.inkSoft, lineHeight: 19 },
+  caption: { fontSize: 12, color: colors.muted },
+  label: { fontSize: 11.5, fontWeight: '700' as const, color: colors.muted, letterSpacing: 1.2, textTransform: 'uppercase' as const },
 };

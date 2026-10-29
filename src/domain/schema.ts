@@ -20,6 +20,9 @@ export const AgentChangesSchema = z
     bufferMinutes: z.number().int().min(0).max(60).optional(),
     budgetInr: z.number().int().min(0).max(5000).optional(),
     provider: z.enum(['uber', 'rapido']).optional(),
+    /** Evening ride home: when the user leaves the destination. */
+    returnDepartTime: time.optional(),
+    returnEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -95,6 +98,13 @@ export function applyIntent(plan: CommutePlan, intent: AgentIntent, nowIso: stri
     bufferMinutes: c.bufferMinutes ?? plan.bufferMinutes,
     budgetInr: c.budgetInr ?? plan.budgetInr,
     provider: c.provider ?? plan.provider,
+    returnTrip:
+      c.returnDepartTime || c.returnEnabled != null
+        ? {
+            enabled: c.returnEnabled ?? true,
+            departTime: c.returnDepartTime ?? plan.returnTrip?.departTime ?? '18:30',
+          }
+        : plan.returnTrip ?? null,
     skipDates: [...plan.skipDates],
     arrivalOverrides: { ...plan.arrivalOverrides },
     updatedAt: nowIso,

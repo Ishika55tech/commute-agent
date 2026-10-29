@@ -1,7 +1,7 @@
 # Commute Agent 🚕
 
 An iOS AI agent for people who commute every day without their own vehicle.
-Tell it your routine once — in English, Hindi or Hinglish — and it works out **when to open the ride
+Tell it your routine once, in plain English, drop exact pins for pickup and drop-off, and it works out **when to open the ride
 app and when to leave**, reminds you every working day, and opens **Uber with the trip pre-filled**.
 You always see the real fare and confirm in Uber. It never pretends a ride is booked.
 
@@ -9,17 +9,22 @@ You always see the real fare and confirm in Uber. It never pretends a ride is bo
 > How AI was used: [`AI_LOG.md`](AI_LOG.md) · Rules for AI agents: [`CLAUDE.md`](CLAUDE.md)
 
 ## Features
-- **Setup by sentence** → AI fills the form → you review → Save
+- **Setup by sentence** → agent pre-fills → confirm exact pins on a map (drag or GPS) → pick time → Start
+- **iOS 26 Liquid Glass UI**, dark map-first design, SF Symbols, haptics
 - **Explained plan**: route time + rush hour + rain + buffer + driver wait = "open Uber at 08:46"
-- **Daily reminders** (next 14 commute days), tap → Uber opens with pickup & drop-off filled
-- **Chat changes**: "kal chhutti hai", "Friday 10 baje pahunchna hai", "pause" → preview → Apply
+- **Two daily reminders** (Book now / Leave now) for the next 14 commute days; tap → Uber opens with pickup & drop-off filled
+- **Ride home too**: optional evening leg (leave-office time), reminders + reversed Uber hand-off
+- **Proactive agent**: speaks first — "Rain likely, I moved your booking 10 min earlier", "Book in 6 min", "Tomorrow is off"
+- **Share ETA** and a **test reminder** button for live demos
+- **Agent chips & chat**: "I'm off tomorrow", "Late start tomorrow", "WFH Friday", "Pause" → preview → Apply
 - **Honest states**: default-estimate badge, notifications-off banner, Rapido "reminders only"
 
 ## Run it
 ```bash
 npm install
 cp .env.example .env        # add Supabase URL + anon key (public values only)
-npx expo start              # scan the QR with the iPhone camera → Expo Go (SDK 57)
+nvm use                     # Node 24 for this project only (.nvmrc)
+npx expo start              # scan the QR with the iPhone camera → Expo Go (SDK 58)
 npm test                    # unit tests
 ```
 Backend (once): `supabase link`, apply `supabase/migrations/*`, then

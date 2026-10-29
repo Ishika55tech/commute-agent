@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "commute-agent",
+    "name": "Commute Agent",
     "slug": "commute-agent",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "io.fiftyfive.commuteagent"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +21,26 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#07090D"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Commute Agent uses your location to set an exact pickup point and look up addresses."
+        }
+      ],
+      "expo-notifications"
+    ],
+    "backgroundColor": "#07090D"
   }
 }

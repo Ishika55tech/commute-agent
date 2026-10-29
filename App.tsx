@@ -5,10 +5,11 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { CommutePlan } from './src/domain/types';
 import DashboardScreen from './src/screens/DashboardScreen';
-import PlanEditorScreen from './src/screens/PlanEditorScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import { openRideApp } from './src/services/handoff';
-import { cancelReminders } from './src/services/notifications';
+import { cancelReminders, type ReminderData } from './src/services/notifications';
 import { addHistory, deletePlan, loadPlan, savePlan } from './src/services/storage';
+import { Backdrop } from './src/ui/components';
 import { colors } from './src/ui/theme';
 
 type Mode = 'loading' | 'editor' | 'dashboard';
@@ -16,6 +17,7 @@ type Mode = 'loading' | 'editor' | 'dashboard';
 export default function App() {
   const [mode, setMode] = useState<Mode>('loading');
   const [plan, setPlan] = useState<CommutePlan | null>(null);
+  const [dashKey, setDashKey] = useState(0);
   const planRef = useRef<CommutePlan | null>(null);
   planRef.current = plan;
 
@@ -26,13 +28,18 @@ export default function App() {
     });
   }, []);
 
-  // Tapping a reminder opens the ride app with the trip pre-filled.
+  // Tapping a "book" reminder opens the ride app with the trip pre-filled.
   // The user still confirms the ride inside the provider's app.
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
-      const data = response.notification.request.content.data as { kind?: string } | undefined;
+      const data = response.notification.request.content.data as Partial<ReminderData> | undefined;
+      if (data?.kind !== 'commute-reminder') return;
       const current = planRef.current ?? (await loadPlan());
-      if (data?.kind === 'commute-reminder' && current) await addHistory(await openRideApp(current));
+      if (!current) return;
+      if ((data.stage ?? 'book') === 'book') {
+        await addHistory(await openRideApp(current, data.leg === 'back' ? 'back' : 'to'));
+        setDashKey((k) => k + 1); // refresh hand-off history
+      }
     });
     return () => sub.remove();
   }, []);
@@ -46,12 +53,13 @@ export default function App() {
   if (mode === 'loading') {
     screen = (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
+        <Backdrop />
         <ActivityIndicator color={colors.accent} />
       </View>
     );
   } else if (mode === 'editor' || !plan) {
     screen = (
-      <PlanEditorScreen
+      <OnboardingScreen
         initial={plan}
         onSaved={async (p) => {
           await persist(p);
@@ -63,6 +71,7 @@ export default function App() {
   } else {
     screen = (
       <DashboardScreen
+        key={dashKey}
         plan={plan}
         onChange={persist}
         onEdit={() => setMode('editor')}
@@ -78,7 +87,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       {screen}
     </SafeAreaProvider>
   );

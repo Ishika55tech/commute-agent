@@ -5,7 +5,7 @@
 Read this file before changing anything. It is the single source of truth for
 how AI assistants work in this repo. Where it differs from the generic Expo guidance in
 `AGENTS.md`, this file wins:
-- **Navigation:** this MVP has two screens and uses a simple state switch in `App.tsx`, not Expo Router (D-010).
+- **Navigation:** this MVP has two screens (onboarding, dashboard) and uses a simple state switch in `App.tsx`, not Expo Router (D-010).
 - **Builds:** Expo Go only (no EAS / dev build) — see D-005. Only Expo-Go-bundled modules may be added.
 
 ## Product in one line
@@ -14,7 +14,9 @@ when you must leave, reminds you every working day, and opens Uber with the trip
 pre-filled. The user always confirms the ride inside Uber.
 
 ## Stack
-- Expo SDK 57 (Expo Go compatible), React Native, TypeScript (strict)
+- Expo SDK 58 (Expo Go compatible), React Native 0.88, TypeScript (strict). Node 24 via `.nvmrc` (per project)
+- UI: dark theme, iOS 26 Liquid Glass (`expo-glass-effect`, fallback `expo-blur`), SF Symbols (`expo-symbols`),
+  `expo-linear-gradient`, `expo-haptics`; maps: `react-native-maps` (Apple Maps on iOS, no key)
 - Supabase Edge Functions (Deno): `parse-commute` (LLM), `travel-estimate` (OpenRouteService)
 - Supabase Postgres: `agent_runs` audit table only. User data stays on the device (AsyncStorage).
 - LLM: Google Gemini (free tier) via REST, JSON mode, temperature 0
@@ -24,11 +26,12 @@ pre-filled. The user always confirms the ride inside Uber.
 ```
 App.tsx                      screen switcher + notification tap handler
 src/domain/                  PURE logic, no React Native imports (unit-tested)
-  types.ts  scheduler.ts  schema.ts
+  types.ts  scheduler.ts  schema.ts  insights.ts (proactive rules)
 src/providers/               ride provider adapters (uber = verified link, rapido = unsupported)
 src/services/                side effects: storage, notifications, geocode, weather, edge-function calls
-src/screens/                 PlanEditorScreen, DashboardScreen
-src/ui/                      theme + shared components
+src/screens/                 OnboardingScreen (4 steps), DashboardScreen
+src/components/              PlacePicker (map pin), RouteMap, TimelineBar, TimeStepper, Segmented
+src/ui/                      theme, Glass, shared components
 supabase/functions/          Edge Functions (secrets live here, never in the app)
 supabase/migrations/ + supabase/undo/   SQL and its rollback
 __tests__/  evals/  docs/
@@ -53,7 +56,9 @@ __tests__/  evals/  docs/
 7. **Minimum data to the LLM.** Send the user's text and plan labels/times only — never coordinates or
    full addresses unless the user typed them in that message.
 8. **iOS reality.** Do not assume JS runs in the background at an exact time. Reminders are
-   pre-scheduled local DATE notifications (max 14, iOS limit 64), re-synced on app open.
+   pre-scheduled local DATE notifications (book + leave per leg, max 56 pending, iOS limit 64), re-synced on app open.
+9. **Precise places.** Every pickup/drop-off is confirmed as a map pin before saving; never send an area centroid
+   to a ride provider without the user seeing it on the map.
 
 ## Human approval gates
 - Any Supabase change (migration, function deploy, secret): show the SQL/command **and the undo** first,

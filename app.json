@@ -39,7 +39,8 @@
           "locationWhenInUsePermission": "Commute Agent uses your location to set an exact pickup point and look up addresses."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "backgroundColor": "#07090D"
   }

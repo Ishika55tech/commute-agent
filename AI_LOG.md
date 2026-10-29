@@ -156,3 +156,9 @@ Owner asked four questions; each became a change:
 - Wired through: agent schema + prompt v1.3.0 (+2 eval cases → 21), notifications per leg, reversed Uber link for
   the evening, onboarding toggle + time, dashboard insight cards with actions, week detail showing both legs.
 - Design call recorded as D-019: insights are rules, not LLM calls — explainable, testable, no quota.
+
+## 2026-10-29 — Owner: "+/− time buttons feel hectic"
+- Replaced the stepper with a big glass time display that reveals the native iOS wheel
+  (`@react-native-community/datetimepicker` 9.2.1 — the SDK 58 bundled version, in Expo Go), 5-minute steps,
+  dark theme. Same component name/props, so onboarding needed no change. API checked against the v9.2.1 source;
+  typecheck 0 errors.

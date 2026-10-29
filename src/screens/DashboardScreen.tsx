@@ -144,6 +144,9 @@ export default function DashboardScreen({ plan, onChange, onEdit, onDelete }: Pr
     if (res.kind === 'invalid') return setAgentError(res.errors.join('\n'));
     const { intent, warnings } = res.result;
     if (intent.intent === 'unknown') return setAgentError(intent.clarifyingQuestion ?? intent.summary);
+    if (intent.changes.provider && intent.changes.provider !== 'uber') {
+      return setAgentError('Only Uber is supported right now.');
+    }
     if (intent.changes.pickupAddress || intent.changes.dropoffAddress) {
       return setAgentError('Changing an address needs a pin on the map — tap "Edit route & schedule".');
     }

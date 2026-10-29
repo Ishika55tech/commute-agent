@@ -106,3 +106,8 @@ Each entry: context → decision → consequences. AI proposed options; the owne
 - Decision: pure rules in `src/domain/insights.ts` over data we already compute (plan, legs, weather, estimate
   source). No extra LLM calls (free-tier quota, latency) and every message is explainable and unit-tested.
   Max 2 insights at a time to avoid noise.
+
+### D-020 Uber only in the UI
+- Owner decision: remove Rapido from the "Ride app" choice — it could only offer reminders, which confused the flow.
+- The `RideProvider` adapter and the Rapido "unsupported" stub stay in code (with tests) to show how a second
+  provider plugs in later. The agent refuses provider switches ("Only Uber is supported right now").

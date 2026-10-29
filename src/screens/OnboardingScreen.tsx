@@ -43,7 +43,8 @@ export default function OnboardingScreen({ initial, onSaved, onCancel }: Props) 
   const [buffer, setBuffer] = useState(initial?.bufferMinutes ?? 10);
   const [driverWait, setDriverWait] = useState(initial?.driverWaitMinutes ?? 8);
   const [budget, setBudget] = useState(initial?.budgetInr != null ? String(initial.budgetInr) : '');
-  const [provider, setProvider] = useState<ProviderId>(initial?.provider ?? 'uber');
+  // Only Uber is offered in the UI (owner decision, D-020). The Rapido adapter stays in code for the pitch.
+  const provider: ProviderId = 'uber';
   const [returnOn, setReturnOn] = useState(initial?.returnTrip?.enabled ?? false);
   const [returnTime, setReturnTime] = useState(initial?.returnTrip?.departTime ?? '18:30');
 
@@ -66,7 +67,6 @@ export default function OnboardingScreen({ initial, onSaved, onCancel }: Props) 
     if (c.workingDays) setDays([...new Set(c.workingDays)].sort((a, b) => a - b) as IsoWeekday[]);
     if (c.bufferMinutes != null) setBuffer(c.bufferMinutes);
     if (c.budgetInr != null) setBudget(String(c.budgetInr));
-    if (c.provider) setProvider(c.provider);
     if (c.returnDepartTime) {
       setReturnOn(true);
       setReturnTime(c.returnDepartTime);
@@ -241,12 +241,13 @@ export default function OnboardingScreen({ initial, onSaved, onCancel }: Props) 
               />
 
               <Text style={[type.label, { marginTop: space.xl, marginBottom: space.md }]}>Ride app</Text>
-              <Segmented
-                value={provider}
-                onChange={setProvider}
-                options={[{ value: 'uber', label: 'Uber', sub: 'trip pre-filled' }, { value: 'rapido', label: 'Rapido', sub: 'reminders only' }]}
-              />
-              <Text style={[type.caption, { marginTop: space.sm }]}>{getProvider(provider).statusMessage}</Text>
+              <View style={styles.providerRow}>
+                <Icon name="car.fill" size={18} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[type.body, { fontWeight: '700' }]}>Uber</Text>
+                  <Text style={type.caption}>{getProvider('uber').statusMessage}</Text>
+                </View>
+              </View>
 
               <View style={{ marginTop: space.xl }}>
                 <Field label="Max fare (optional)" icon="indianrupeesign" placeholder="150" value={budget} onChangeText={setBudget} keyboardType="number-pad" />
@@ -304,6 +305,7 @@ const styles = StyleSheet.create({
   example: { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: colors.violetSoft, borderRadius: radius.sm, padding: 10 },
   day: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: colors.hairline, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' },
   bar: { flex: 1, height: 4, borderRadius: 2 },
+  providerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.sm, backgroundColor: colors.accentSoft },
   returnRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xl },
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg, paddingTop: space.md },
 });
